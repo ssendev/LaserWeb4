@@ -21,7 +21,7 @@ docker run -it --device=/dev/ttyUSB0 --rm -p 8000:8000 laserweb4:dev
 ## Release
 You can run the current lw.comm-server version of the app in Docker using the commands below.
 
-**Warning:** This will bundle the current (head) [lw.comm-server head](https://github.com/LaserWeb/lw.comm-server/) Git version + the LW app bundled with that, it *does not* build the latest LW app from this repo! Use the 'dev' target for that.
+**Warning:** This will bundle the current (head) [lw.comm-server head](https://github.com/LaserWeb/lw.comm-server/) Git version + the LW app from this repo.
 
 - build release image:
 ```

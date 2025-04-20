@@ -1,11 +1,11 @@
 #
 # ---- Base Node ----
-FROM node:16-bullseye AS base
+FROM node:22-bookworm AS base
 # set working directory
 WORKDIR /usr/src/app
 # Set up Apt, install build tooling and udev
 RUN apt update
-RUN apt install -y build-essential udev
+RUN apt install -y build-essential udev libudev-dev libusb-1.0-0-dev
 # Upgrade npm and set node options
 RUN npm install -g npm
 RUN npm set progress=false
@@ -19,12 +19,21 @@ FROM base AS comm-server
 #  (Currently use --force to allow for broken deps, this should be removed once the dep tree is fixed
 RUN npm install -g nodemon && npm install --force lw.comm-server@git+https://github.com/LaserWeb/lw.comm-server.git
 
-# ---- Release ----
-# This will use the git head version of lw.comm-server + the LW app version bundled with that.
-#  it DOES NOT build and serve the version of LaserWeb in this repo
 #
+# ---- build Laserweb ----
+FROM base as build-prod
+COPY package.json package-lock.json ./
+RUN npm ci --force
+COPY . .
+RUN npm run bundle-prod
+
+# ---- Release ----
+# This will use the git head version of lw.comm-server and Laserweb from the build stage
 FROM comm-server AS release
 WORKDIR /usr/src/app
+# Replace the bundled app with the freshly built Laserweb
+RUN rm -rf node_modules/lw.comm-server/app/
+COPY --from=build-prod /usr/src/app/dist /usr/src/app/node_modules/lw.comm-server/app/
 # define CMD
 CMD [ "node", "node_modules/lw.comm-server/server.js"]
 
