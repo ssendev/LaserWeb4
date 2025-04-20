@@ -170,6 +170,42 @@ export class GcodePreview {
         }
     }
 
+    setParsedGcodeFromPreview(preview) {
+        if (this.array === preview.array)
+            return;
+
+        this.arrayChanged = true;
+        ++this.arrayVersion;
+        if (!preview.array) {
+            this.array = null;
+            this.g0Dist = 0;
+            this.g1Time = 0;
+            this.moves = 0;
+        } else {
+            this.array = preview.array;
+            this.g0Dist = preview.g0Dist;
+            this.g1Time = preview.g1Time;
+            this.moves = preview.moves;
+            this.minX = preview.minX;
+            this.maxX = preview.maxX;
+            this.minY = preview.minY;
+            this.maxY = preview.maxY;
+            this.minA = preview.minA;
+            this.maxA = preview.maxA;
+            console.log('setParsedGcodeFromPreviewG', {
+                g0Dist: this.g0Dist,
+                g1Time: this.g1Time,
+                moves: this.moves,
+                minX: this.minX,
+                maxX: this.maxX,
+                minY: this.minY,
+                maxY: this.maxY,
+                minA: this.minA,
+                maxA: this.maxA,
+            });
+        }
+    }
+
     draw(drawCommands, perspective, view, g0Rate, simTime, rotaryDiameter) {
         if (this.drawCommands !== drawCommands) {
             this.drawCommands = drawCommands;

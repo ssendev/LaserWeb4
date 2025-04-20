@@ -425,6 +425,23 @@ class Settings extends React.Component {
                             Increasing this can improve gcode generation performance when working with with lots of individual operations.<br/>
                             This is applied per operation, indvidual operations are <em>not</em> threaded and will not benefit from this option.<br/>
                             </p>,"Gcode Generation Threads"), units: '' }} />
+                        <h5 className="header">Thumbnails</h5>
+                        <TextField {...{ object: this.props.settings, field: 'gcodeThumbnailSizes', setAttrs: setSettingsAttrs, description: 'Sizes', info: Info(<p className="help-block">
+                            Comma separated list of thumbnail sizes and Grid Opacity, eg <em><strong>32x32,400x300</strong></em>.<br/>
+                            Be aware that Moonraker only parses thumbnails if it knows the gcode generator, to trick it put something like <em><strong>PrusaSlicer thumbnail hack on</strong></em> in the gcode header.<br/>
+                            </p>,"Thumbnail Sizes"), style: { resize: "vertical", fontFamily: "monospace, monospace" } }} />
+                        <NumberField {...{ object: this.props.settings, field: 'gcodeThumbnailGridMinSize', setAttrs: setSettingsAttrs, description: 'Hide Grid <', info: Info(<p className="help-block">
+                            Don't show grid in thumbnails smaller than this size.
+                            </p>,"Minimum Grid Size"), units: 'px' }} />
+                        <ToggleField {...{ object: this.props.settings, field: 'gcodeThumbnailLaser', setAttrs: setSettingsAttrs, description: 'Tool', info: Info(<p className="help-block">
+                            Include Tool preview in thumbnails.
+                            </p>,"Show Tool in Thumbnail") }} />
+                        <ToggleField {...{ object: this.props.settings, field: 'gcodeThumbnailGcode', setAttrs: setSettingsAttrs, description: 'Gcode', info: Info(<p className="help-block">
+                            Include Gcode preview in thumbnails.
+                            </p>,"Show Gcode in Thumbnail") }} />
+                        <ToggleField {...{ object: this.props.settings, field: 'gcodeThumbnailDocument', setAttrs: setSettingsAttrs, description: 'Document', info: Info(<p className="help-block">
+                            Include Document preview in thumbnails.
+                            </p>,"Show Document in Thumbnail") }} />
                         <hr />
                         <TextField {...{ object: this.props.settings, field: 'gcodeHeader', setAttrs: setSettingsAttrs, description: 'Gcode Header', info: Info(<p className="help-block">
                             Text here will be placed in a commented (;) block at the start of the gcode.<br/>

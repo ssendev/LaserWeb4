@@ -23,13 +23,14 @@ import '../styles/simbar.css';
 
 import { GlobalStore } from '..';
 import { setCameraAttrs, zoomArea } from '../actions/camera'
+import { zoomArea as calcZoomArea } from  '../reducers/camera.js'
 import { selectDocument, toggleSelectDocument, transform2dSelectedDocuments, removeDocumentSelected, cloneDocumentSelected } from '../actions/document';
 import { setWorkspaceAttrs } from '../actions/workspace';
 import { setSettingsAttrs } from '../actions/settings';
 
 import { runCommand, jogTo } from './com.js';
 
-import { withDocumentCache } from './document-cache'
+import { DocumentCacheHolder, withDocumentCache } from './document-cache'
 import { Dom3d, Text3d } from './dom3d';
 import { DrawCommands } from '../draw-commands'
 import { GcodePreview } from '../draw-commands/GcodePreview'
@@ -104,7 +105,7 @@ class LightenMachineBounds {
 };
 
 class Grid {
-    draw(drawCommands, { perspective, view, width, height, major = MAJOR_GRID_SPACING, minor = MINOR_GRID_SPACING, xcolor, ycolor }) {
+    draw(drawCommands, { perspective, view, width, height, major = MAJOR_GRID_SPACING, minor = MINOR_GRID_SPACING, xcolor, ycolor, opacity = 1 }) {
         if (!this.maingrid || !this.origin || this.width !== width || this.height !== height) {
             this.width = width;
             this.height = height;
@@ -142,13 +143,13 @@ class Grid {
             this.origincount = c.length / 3
         }
 
-        drawCommands.basic({ perspective, view, position: this.maingrid, offset: 0, count: this.maincount, color: [0.7, 0.7, 0.7, 0.95], scale: [1, 1, 1], translate: [0, 0, 0], primitive: drawCommands.gl.LINES }); // Gray grid
-        drawCommands.basic({ perspective, view, position: this.darkgrid, offset: 0, count: this.darkcount, color: [0.5, 0.5, 0.5, 0.95], scale: [1, 1, 1], translate: [0, 0, 0], primitive: drawCommands.gl.LINES }); // dark grid
+        drawCommands.basic({ perspective, view, position: this.maingrid, offset: 0, count: this.maincount, color: [0.7, 0.7, 0.7, 0.95*opacity], scale: [1, 1, 1], translate: [0, 0, 0], primitive: drawCommands.gl.LINES }); // Gray grid
+        drawCommands.basic({ perspective, view, position: this.darkgrid, offset: 0, count: this.darkcount, color: [0.5, 0.5, 0.5, 0.95*opacity], scale: [1, 1, 1], translate: [0, 0, 0], primitive: drawCommands.gl.LINES }); // dark grid
 
         let rgbx = [...convert.hex.rgb(xcolor)];
         let rgby = [...convert.hex.rgb(ycolor)];
-        drawCommands.basic({ perspective, view, position: this.origin, offset: 0, count: 2, color: [rgbx[0]/255,rgbx[1]/255,rgbx[2]/255,1], scale: [1, 1, 1], translate: [0, 0, 0], primitive: drawCommands.gl.LINES });
-        drawCommands.basic({ perspective, view, position: this.origin, offset: 2, count: 2, color: [rgby[0]/255,rgby[1]/255,rgby[2]/255,1], scale: [1, 1, 1], translate: [0, 0, 0], primitive: drawCommands.gl.LINES });
+        drawCommands.basic({ perspective, view, position: this.origin, offset: 0, count: 2, color: [rgbx[0]/255,rgbx[1]/255,rgbx[2]/255,opacity], scale: [1, 1, 1], translate: [0, 0, 0], primitive: drawCommands.gl.LINES });
+        drawCommands.basic({ perspective, view, position: this.origin, offset: 2, count: 2, color: [rgby[0]/255,rgby[1]/255,rgby[2]/255,opacity], scale: [1, 1, 1], translate: [0, 0, 0], primitive: drawCommands.gl.LINES });
     }
 };
 
@@ -516,6 +517,178 @@ function cacheDrawing(fn, state, args) {
     });
 }
 
+var workspaceContext;
+var thumbnailContext; // = null; // to use a dedicated canvas for thumbnails
+var thumbnailDebug; // = true; // to show a debug canvas
+export function thumbnails(gcode) {
+    const settings = workspaceContext.props.settings;
+    if (!settings.gcodeThumbnailGcode && !settings.gcodeThumbnailLaser && !settings.gcodeThumbnailDocument) return '';
+
+    const sizes = (settings.gcodeThumbnailSizes || '').trim().split(/[ ,]+/).map(s => s.split(/x|g/))
+
+    if (thumbnailContext === null) {
+        const thumbnailCanvas = document.createElement('canvas');
+        const gl = thumbnailCanvas.getContext('webgl', { alpha: true, depth: true, antialias: true, preserveDrawingBuffer: true });
+        thumbnailContext = {
+            canvas: thumbnailCanvas,
+            drawCommands: new DrawCommands(gl),
+            grid: new Grid(),
+            gcodePreview: new GcodePreview(),
+            laserPreview: new LaserPreview(),
+            documentCacheHolder: new DocumentCacheHolder(),
+        }
+    }
+    const { canvas, drawCommands, grid, gcodePreview, laserPreview, documentCacheHolder } = thumbnailContext || {
+        canvas: workspaceContext.canvas,
+        drawCommands: workspaceContext.drawCommands,
+        grid: workspaceContext.grid,
+        gcodePreview: workspaceContext.props.gcodePreview,
+        laserPreview: workspaceContext.props.laserPreview,
+        documentCacheHolder: workspaceContext.props.documentCacheHolder,
+    }
+    let gl = canvas.getContext('webgl', { alpha: true, depth: true, antialias: true, preserveDrawingBuffer: true });
+
+    if (thumbnailDebug === true) {
+        thumbnailDebug = document.createElement('canvas');
+        thumbnailDebug.style.position = 'fixed'
+        thumbnailDebug.style.top = 0
+        thumbnailDebug.style.right = 0
+        thumbnailDebug.style.transformOrigin = 'top right'
+        thumbnailDebug.style.transform = `scale(${1/window.devicePixelRatio})`
+        document.body.append(thumbnailDebug)
+    }
+
+    if (canvas !== workspaceContext.canvas) {
+        if (gcode) {
+            const parsedGcode = parseGcode(gcode);
+            gcodePreview.setParsedGcode(parsedGcode);
+            laserPreview.setParsedGcode(parsedGcode);
+        } else {
+            gcodePreview.setParsedGcodeFromPreview(workspaceContext.props.gcodePreview);
+            laserPreview.setParsedGcodeFromPreview(workspaceContext.props.laserPreview);
+        }
+
+        documentCacheHolder.setDocuments(workspaceContext.props.documents);
+    }
+
+    const originalWidth = canvas.width;
+    const originalHeight = canvas.height;
+
+    let thumbs = '';
+    for (let [width, height, opacity] of sizes) {
+        if (!(width > 0 && height > 0)) continue;
+        if (opacity) {
+            opacity = +opacity / 100;
+        } else {
+            opacity = 1;
+        };
+
+        canvas.width = width;
+        canvas.height = height;
+        const workspace = { workOffsetX: 0, workOffsetY: 0, width, height };
+
+        const machineX = settings.machineBottomLeftX - workspace.workOffsetX;
+        const machineY = settings.machineBottomLeftY - workspace.workOffsetY;
+
+        let area;
+        if (settings.gcodeThumbnailGcode || settings.gcodeThumbnailLaser) {
+            area = WorkspaceClass.zoomGcodeArea(gcodePreview);
+        }
+        if (settings.gcodeThumbnailDocument) {
+            const docArea = WorkspaceClass.zoomDocArea(workspaceContext.props.documentCacheHolder, {}, true);
+            if (area && docArea) {
+                area = [Math.min(area[0], docArea[0]), Math.min(area[1], docArea[1]), Math.max(area[2], docArea[2]), Math.max(area[3], docArea[3])];
+            } else if (docArea) {
+                area = docArea;
+            }
+        }
+        if (!area) {
+            area = WorkspaceClass.zoomMachineArea(settings, workspace);
+        }
+        const zoom = calcZoomArea(null, settings, workspace, { x1: area[0], y1: area[1], x2: area[2], y2: area[3] });
+        const size = Math.min(area[2] - area[0], area[3] - area[1]);
+        const beamSize = Math.max(settings.machineBeamDiameter, size / Math.max(width, height) * 0.9)
+
+        const camera = calcCamera({
+            viewportWidth: width,
+            viewportHeight: height,
+            fovy: zoom.fovy,
+            near: .1,
+            far: 2000,
+            eye: zoom.eye,
+            center: zoom.center,
+            up: [0, 1, 0],
+            showPerspective: false,
+            machineX,
+            machineY,
+        });
+
+        gl.viewport(0, 0, width, height);
+
+        let rgbWorkSpace = [...convert.hex.rgb(settings.workBedColor)];
+        gl.clearColor(rgbWorkSpace[0]/255,rgbWorkSpace[1]/255,rgbWorkSpace[2]/255,1);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.enable(gl.BLEND);
+
+        if (opacity > 0 && Math.min(width, height) >= settings.gcodeThumbnailGridMinSize) {
+            grid.draw(drawCommands, {
+                perspective: camera.perspective, view: camera.view,
+                width: settings.toolGridWidth, height: settings.toolGridHeight,
+                minor: Math.max(settings.toolGridMinorSpacing,0.1),
+                major: Math.max(settings.toolGridMajorSpacing,1),
+                xcolor: settings.toolGridXColor,
+                ycolor: settings.toolGridYColor,
+                opacity: opacity,
+            });
+        }
+
+        if (settings.gcodeThumbnailDocument) {
+            if (canvas === workspaceContext.canvas) {
+                drawDocuments({ perspective: camera.perspective, view: camera.view, drawCommands, documentCacheHolder });
+            } else {
+                for (let cachedDocument of documentCacheHolder.cache.values())
+                    if (cachedDocument.document.visible)
+                        drawDocument(camera.perspective, camera.view, drawCommands, cachedDocument, !cachedDocument.texture);
+            }
+        }
+
+        if (settings.gcodeThumbnailGcode) {
+            gcodePreview.draw(
+                drawCommands, camera.perspective, camera.view,
+                settings.simG0Rate, 1e10, settings.machineAAxisDiameter);
+        }
+
+        if (settings.gcodeThumbnailLaser) {
+            gl.blendEquation(drawCommands.EXT_blend_minmax.MIN_EXT);
+            gl.blendFunc(gl.ONE, gl.ONE);
+            laserPreview.draw(
+                drawCommands, camera.perspective, camera.view, beamSize,
+                settings.gcodeSMaxValue, settings.simG0Rate, 1e10, settings.machineAAxisDiameter);
+            gl.blendEquation(gl.FUNC_ADD);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        }
+
+        const base64 = canvas.toDataURL().replace(/^.*?,/, '');
+        const lines = base64.split(/(.{78})/).filter(Boolean).join('\n; ');
+        thumbs += `\n;\n; thumbnail begin ${width}x${height} ${base64.length}\n; ${lines}\n; thumbnail end\n;\n`;
+
+        if (thumbnailDebug) {
+            thumbnailDebug.width = width;
+            thumbnailDebug.height = height;
+            thumbnailDebug.getContext('2d').drawImage(canvas, 0, 0);
+        }
+    }
+
+    if (canvas === workspaceContext.canvas) {
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+    }
+
+    return thumbs;
+}
+
+
 export function drawDocument(perspective, view, drawCommands, cachedDocument, createTextures) {
     let { document } = cachedDocument;
     if (document.rawPaths) {
@@ -682,6 +855,7 @@ class WorkspaceContent extends React.Component {
         this.drawDocsState = {};
         this.drawGcodeState = {};
         this.drawSelDocsState = {};
+        workspaceContext = this
     }
 
     UNSAFE_componentWillMount() {
@@ -1315,37 +1489,56 @@ class Workspace extends React.Component {
         this.showControls = true;
     }
 
-    zoomMachine() {
-        let x = this.props.settings.machineBottomLeftX;
-        let y = this.props.settings.machineBottomLeftY;
-        if (!this.props.settings.showMachine) {
+    static zoomMachineArea(settings, workspace) {
+        let x = settings.machineBottomLeftX;
+        let y = settings.machineBottomLeftY;
+        if (!settings.showMachine) {
             x = 0;
             y = 0;
-        }
-        this.props.dispatch(zoomArea(
-            x - 10 - this.props.workspace.workOffsetX,
-            y - 10 - this.props.workspace.workOffsetY,
-            x + this.props.settings.machineWidth + 10 - this.props.workspace.workOffsetX,
-            y + this.props.settings.machineHeight + 10 - this.props.workspace.workOffsetY
-        ));
+        }   
+        return [
+            x - 10 - workspace.workOffsetX,
+            y - 10 - workspace.workOffsetY,
+            x + settings.machineWidth + 10 - workspace.workOffsetX,
+            y + settings.machineHeight + 10 - workspace.workOffsetY
+        ];
     }
 
-    zoomDoc() {
+    zoomMachine() {
+        this.props.dispatch(zoomArea(...this.constructor.zoomMachineArea(this.props.settings, this.props.workspace)));
+    }
+
+    static zoomDocArea(documentCacheHolder, that, notSelected) {
         let found = false;
-        let bounds = this.bounds = { x1: Number.MAX_VALUE, y1: Number.MAX_VALUE, x2: -Number.MAX_VALUE, y2: -Number.MAX_VALUE };
-        for (let cache of this.props.documentCacheHolder.cache.values()) {
-            let doc = cache.document;
-            if (doc.selected && doc.transform2d && cache.bounds) {
-                found = true;
-                bounds.x1 = Math.min(bounds.x1, cache.bounds.x1 + doc.transform2d[4]);
-                bounds.y1 = Math.min(bounds.y1, cache.bounds.y1 + doc.transform2d[5]);
-                bounds.x2 = Math.max(bounds.x2, cache.bounds.x2 + doc.transform2d[4]);
-                bounds.y2 = Math.max(bounds.y2, cache.bounds.y2 + doc.transform2d[5]);
+        let bounds = that.bounds = { x1: Number.MAX_VALUE, y1: Number.MAX_VALUE, x2: -Number.MAX_VALUE, y2: -Number.MAX_VALUE };
+        if (!notSelected) {
+            for (let cache of documentCacheHolder.cache.values()) {
+                let doc = cache.document;
+                if (doc.selected && doc.transform2d && cache.bounds) {
+                    found = true;
+                    bounds.x1 = Math.min(bounds.x1, cache.bounds.x1 + doc.transform2d[4]);
+                    bounds.y1 = Math.min(bounds.y1, cache.bounds.y1 + doc.transform2d[5]);
+                    bounds.x2 = Math.max(bounds.x2, cache.bounds.x2 + doc.transform2d[4]);
+                    bounds.y2 = Math.max(bounds.y2, cache.bounds.y2 + doc.transform2d[5]);
+                }
             }
         }
 
         if (!found) {
-            for (let cache of this.props.documentCacheHolder.cache.values()) {
+            for (let cache of documentCacheHolder.cache.values()) {
+                let doc = cache.document;
+                if (doc.visible && doc.transform2d && cache.bounds) {
+                    found = true;
+                    bounds.x1 = Math.min(bounds.x1, cache.bounds.x1 + doc.transform2d[4]);
+                    bounds.y1 = Math.min(bounds.y1, cache.bounds.y1 + doc.transform2d[5]);
+                    bounds.x2 = Math.max(bounds.x2, cache.bounds.x2 + doc.transform2d[4]);
+                    bounds.y2 = Math.max(bounds.y2, cache.bounds.y2 + doc.transform2d[5]);
+                }
+            }
+        }
+
+        if (!found) {
+            for (let cache of documentCacheHolder.cache.values()) {
                 let doc = cache.document;
                 if (doc.transform2d && cache.bounds) {
                     found = true;
@@ -1360,15 +1553,29 @@ class Workspace extends React.Component {
         if (found) {
             let marginX = (bounds.x2 - bounds.x1) / 50;
             let marginY = (bounds.y2 - bounds.y1) / 50;
-            this.props.dispatch(zoomArea(bounds.x1 - marginX, bounds.y1 - marginY, bounds.x2 + marginX, bounds.y2 + marginY));
+            return [bounds.x1 - marginX, bounds.y1 - marginY, bounds.x2 + marginX, bounds.y2 + marginY];
+        }
+    }
+
+    zoomDoc() {
+        const found = this.constructor.zoomDocArea(this.props.documentCacheHolder, this, false);
+        if (found) {
+            this.props.dispatch(zoomArea(...found));
+        }
+    }
+
+    static zoomGcodeArea(gcodePreview) {
+        if (gcodePreview.array) {
+            let marginX = (gcodePreview.maxX - gcodePreview.minX) / 50;
+            let marginY = (gcodePreview.maxY - gcodePreview.minY) / 50;
+            return [gcodePreview.minX - marginX, gcodePreview.minY - marginY, gcodePreview.maxX + marginX, gcodePreview.maxY + marginY];
         }
     }
 
     zoomGcode() {
-        if (this.gcodePreview.array) {
-            let marginX = (this.gcodePreview.maxX - this.gcodePreview.minX) / 50;
-            let marginY = (this.gcodePreview.maxY - this.gcodePreview.minY) / 50;
-            this.props.dispatch(zoomArea(this.gcodePreview.minX - marginX, this.gcodePreview.minY - marginY, this.gcodePreview.maxX + marginX, this.gcodePreview.maxY + marginY));
+        const found = this.constructor.zoomGcodeArea(this.gcodePreview);
+        if (found) {
+            this.props.dispatch(zoomArea(...found));
         }
     }
 
@@ -1507,6 +1714,7 @@ class Workspace extends React.Component {
         )
     }
 }
+const WorkspaceClass = Workspace;
 Workspace = connect(
     state => ({ camera: state.camera, gcode: state.gcode.content, workspace: state.workspace, settings: state.settings, enableVideo: ((state.settings.toolVideoDevice !== null) || (!!state.settings.toolWebcamUrl)) }),
     dispatch => ({

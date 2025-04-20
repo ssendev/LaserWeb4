@@ -167,6 +167,18 @@ export class LaserPreview {
         }
     }
 
+    setParsedGcodeFromPreview(preview) {
+        if (this.array === preview.array)
+            return;
+
+        this.arrayChanged = true;
+        if (!preview.array) {
+            this.array = null;
+        } else {
+            this.array = preview.array;
+        }
+    }
+
     draw(drawCommands, perspective, view, diameter, gcodeSMaxValue, g0Rate, simTime, rotaryDiameter) {
         if (this.drawCommands !== drawCommands) {
             this.drawCommands = drawCommands;

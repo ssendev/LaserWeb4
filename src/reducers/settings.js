@@ -169,6 +169,11 @@ export const SETTINGS_INITIALSTATE = {
     gcodeConcurrency: 2,
     gcodeSegmentLength: 0,
     gcodeCurvePrecision: 0.1,
+    gcodeThumbnailSizes: "",
+    gcodeThumbnailGridMinSize: 128,
+    gcodeThumbnailLaser: true,
+    gcodeThumbnailGcode: false,
+    gcodeThumbnailDocument: false,
 
     comServerVersion: 'not connected',
     comApiVersion: 'N/A',

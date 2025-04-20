@@ -11,6 +11,7 @@ import { setWorkspaceAttrs } from '../actions/workspace';
 // import { setGcode } from '../actions/gcode';
 import CommandHistory from './command-history';
 import { strftime } from '../lib/strftime.js'
+import { thumbnails } from './workspace.js'
 
 import { alert, prompt, confirm} from './laserweb';
 
@@ -334,10 +335,11 @@ class Com extends React.Component {
                     send('printer.gcode.script', { script });
                 },
                 runJob(data) {
+                    const thumbs = thumbnails();
                     var form = new FormData();
                     form.append('print', true)
                     const filename = strftime(that.props.settings.gcodeFilename) + that.props.settings.gcodeExtension
-                    const blob = new Blob([data], { type: 'text/plain' })
+                    const blob = new Blob([data+thumbs], { type: 'text/plain' })
                     form.append('file', blob, filename)
                     fetch(addr.replace('ws', 'http').replace(/\/websocket|$/, '/server/files/upload'), { method: 'POST', body: form }).then((response) => {
                         if (response.status > 201) {
