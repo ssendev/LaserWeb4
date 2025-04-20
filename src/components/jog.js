@@ -347,7 +347,11 @@ class Jog extends React.Component {
         if (units == 'mm/s') mult = 60;
         feedrate = jQuery('#jogfeedxy').val() * mult;
 
-        let bounds=this.getGcodeBounds(this.props.gcode)
+        let bounds = this.getGcodeBounds(this.props.gcode);
+        if (!bounds) {
+            CommandHistory.error('no gcode to check size of');
+            return;
+        }
         let power = this.props.settings.gcodeCheckSizePower / 100 * this.props.settings.gcodeSMaxValue;
         let moves = `
             G90\n
