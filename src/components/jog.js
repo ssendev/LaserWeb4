@@ -33,6 +33,7 @@ var ovLoop;
 var playing = false;
 var paused = false;
 var m0 = false;
+var thatComponent;
 
 $('body').on('keydown', function (ev) {
     if (ev.keyCode === 17) {
@@ -123,6 +124,7 @@ class Jog extends React.Component {
 
     componentDidMount()
     {
+        thatComponent = this;
         this.checkGcodeBounds(this.props.gcode);
 
         bindKeys(this.bindings);
@@ -179,6 +181,7 @@ class Jog extends React.Component {
     }
 
     componentWillUnmount() {
+        thatComponent = undefined;
         liveJoggingState = this.state.liveJogging;
         //
         unbindKeys(this.bindings)
@@ -244,14 +247,16 @@ class Jog extends React.Component {
             let cmd = this.props.gcode;
             //alert(cmd);
             console.log('runJob(' + cmd.length + ')');
-            playing = true;
+            if (cmd.length > 0) {
+                playing = true;
 
-            this.setState({
-                isPlaying: true,
-                liveJogging: {
-                    ... this.state.liveJogging, disabled: true, hasHomed: false
-                }
-            })
+                this.setState({
+                    isPlaying: true,
+                    liveJogging: {
+                        ... this.state.liveJogging, disabled: true, hasHomed: false
+                    }
+                })
+            }    
 
             runJob(cmd);
         } else {
@@ -927,11 +932,13 @@ Jog = connect(
 // Exports
 export default Jog
 
+export { liveJoggingState }
 
-export function runStatus(status) {
+export function runStatus(status, applyState = true) {
     if (status === 'running') {
         playing = true;
         paused = false;
+        m0 = false;
         $('#playicon').removeClass('fa-play');
         $('#playicon').addClass('fa-pause');
         $('#xP').attr('disabled', true);
@@ -982,6 +989,15 @@ export function runStatus(status) {
     } else if (status === 'alarm') {
         //socket.emit('clearAlarm', 2);
     }
+    if (applyState && thatComponent) {
+        thatComponent.setState({
+            isPlaying: playing,
+            isPaused: paused,
+            isM0: m0,
+            liveJogging: { ...thatComponent.state.liveJogging, disabled: (playing && !m0) }
+        });
+    }
+    return { playing, paused, m0 };
 };
 
 export class LiveJogging extends React.Component {
