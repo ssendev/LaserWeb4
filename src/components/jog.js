@@ -327,12 +327,12 @@ class Jog extends React.Component {
         probe(axis, offset);
     }
 
-    setZero(axis) {
+    setZero(axis, event) {
         if (!this.state.isPlaying)
             this.setState({ liveJogging: { ... this.state.liveJogging, hasHomed: true, disabled: false } })
 
-        console.log('setZero(' + axis + ')');
-        setZero(axis);
+        console.log('setZero(' + axis + ', ' + event.altKey + ')');
+        setZero(axis, event.altKey);
     }
 
     setPosition(pos) {
@@ -549,7 +549,7 @@ class Jog extends React.Component {
                                     <li role="separator" className="divider"></li>
                                     <li role="presentation" className="dropdown-header"><i className="fa fa-fw fa-crop" aria-hidden="true"></i><b>Work Coordinates</b></li>
                                     <li id="homeX"><a href="#" onClick={(e) => { this.home('x') }}><i className="fa fa-fw fa-home" aria-hidden="true"></i>Home X Axis</a></li>
-                                    <li id="zeroX"><a href="#" onClick={(e) => { this.setZero('x') }}><i className="fa fa-fw fa-crosshairs" aria-hidden="true"></i>Set X Axis Zero</a></li>
+                                    <li id="zeroX"><a href="#" onClick={(e) => { this.setZero('x', e) }}><i className="fa fa-fw fa-crosshairs" aria-hidden="true"></i>Set X Axis Zero</a></li>
                                     <li role="separator" className="divider"></li>
                                     <li role="presentation" className="dropdown-header"><i className="fa fa-fw fa-arrows" aria-hidden="true"></i><b>Move</b></li>
                                     <li id="gotoXZero"><a href="#" onClick={(e) => { this.gotoZero('x') }}><i className="fa fa-fw fa-play" aria-hidden="true"></i>G0 to X0</a></li>
@@ -572,7 +572,7 @@ class Jog extends React.Component {
                                     <li role="separator" className="divider"></li>
                                     <li role="presentation" className="dropdown-header"><i className="fa fa-fw fa-crop" aria-hidden="true"></i><b>Work Coordinates</b></li>
                                     <li id="homeY"><a href="#" onClick={(e) => { this.home('y') }}><i className="fa fa-fw fa-home" aria-hidden="true"></i>Home Y Axis</a></li>
-                                    <li id="zeroY"><a href="#" onClick={(e) => { this.setZero('y') }}><i className="fa fa-fw fa-crosshairs" aria-hidden="true"></i>Set Y Axis Zero</a></li>
+                                    <li id="zeroY"><a href="#" onClick={(e) => { this.setZero('y', e) }}><i className="fa fa-fw fa-crosshairs" aria-hidden="true"></i>Set Y Axis Zero</a></li>
                                     <li role="separator" className="divider"></li>
                                     <li role="presentation" className="dropdown-header"><i className="fa fa-fw fa-arrows" aria-hidden="true"></i><b>Move</b></li>
                                     <li id="gotoYZero"><a href="#" onClick={(e) => { this.gotoZero('y') }}><i className="fa fa-fw fa-play" aria-hidden="true"></i>G0 to Y0</a></li>
@@ -596,7 +596,7 @@ class Jog extends React.Component {
                                             <li role="separator" className="divider"></li>
                                             <li role="presentation" className="dropdown-header"><i className="fa fa-fw fa-crop" aria-hidden="true"></i><b>Work Coordinates</b></li>
                                             <li id="homeZ"><a href="#" onClick={(e) => { this.home('z') }}><i className="fa fa-fw fa-home" aria-hidden="true"></i>Home Z Axis</a></li>
-                                            <li id="zeroZ"><a href="#" onClick={(e) => { this.setZero('z') }}><i className="fa fa-fw fa-crosshairs" aria-hidden="true"></i>Set Z Axis Zero</a></li>
+                                            <li id="zeroZ"><a href="#" onClick={(e) => { this.setZero('z', e) }}><i className="fa fa-fw fa-crosshairs" aria-hidden="true"></i>Set Z Axis Zero</a></li>
                                             <li role="separator" className="divider"></li>
                                             <li role="presentation" className="dropdown-header"><i className="fa fa-fw fa-arrows" aria-hidden="true"></i><b>Move</b></li>
                                             <li id="gotoZZero"><a href="#" onClick={(e) => { this.gotoZero('z') }}><i className="fa fa-fw fa-play" aria-hidden="true"></i>G0 to Z0</a></li>
@@ -623,7 +623,7 @@ class Jog extends React.Component {
                                             <li role="separator" className="divider"></li>
                                             <li role="presentation" className="dropdown-header"><i className="fa fa-fw fa-crop" aria-hidden="true"></i><b>Work Coordinates</b></li>
                                             <li id="homeA"><a href="#" onClick={(e) => { this.home('a') }}><i className="fa fa-fw fa-home" aria-hidden="true"></i>Home A Axis</a></li>
-                                            <li id="zeroA"><a href="#" onClick={(e) => { this.setZero('a') }}><i className="fa fa-fw fa-crosshairs" aria-hidden="true"></i>Set A Axis Zero</a></li>
+                                            <li id="zeroA"><a href="#" onClick={(e) => { this.setZero('a', e) }}><i className="fa fa-fw fa-crosshairs" aria-hidden="true"></i>Set A Axis Zero</a></li>
                                             <li role="separator" className="divider"></li>
                                             <li role="presentation" className="dropdown-header"><i className="fa fa-fw fa-arrows" aria-hidden="true"></i><b>Move</b></li>
                                             <li id="gotoAZero"><a href="#" onClick={(e) => { this.gotoZero('a') }}><i className="fa fa-fw fa-play" aria-hidden="true"></i>G0 to A0</a></li>
@@ -716,7 +716,7 @@ class Jog extends React.Component {
                                       </button>
                                   </div>
                                   <div className="btn-group">
-                                      <button type='button' id="zeroAll" className="btn btn-ctl btn-default" onClick={(e) => { this.setZero('all') }}>
+                                      <button type='button' id="zeroAll" className="btn btn-ctl btn-default" onClick={(e) => { this.setZero('all', e) }}>
                                           <span className="fa-stack fa-1x">
                                               <i className="fa fa-crosshairs fa-stack-1x"></i>
                                               <strong className="fa-stack-1x icon-top-text">set</strong>

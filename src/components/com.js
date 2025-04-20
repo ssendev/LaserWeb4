@@ -813,11 +813,11 @@ export function clearAlarm(method) {
     }
 }
 
-export function setZero(axis) {
+export function setZero(axis, reset) {
     if (serverConnected) {
         if (machineConnected){
             CommandHistory.write('Set ' + axis + ' Axis zero', CommandHistory.INFO);
-            socket.emit('setZero', axis);
+            socket.emit('setZero', axis, reset);
         } else {
             CommandHistory.error('Machine is not connected!')
         }
