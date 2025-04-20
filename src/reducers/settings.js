@@ -83,6 +83,7 @@ export const SETTINGS_INITIALSTATE = {
     machineLaserHasIntensity: true,
     machineBottomLeftX: 0,
     machineBottomLeftY: 0,
+    machineSizeFromMachine: false,
 
     machineFeedRange: {
         XY: {min: 1, max:50000},
@@ -178,6 +179,7 @@ export const SETTINGS_INITIALSTATE = {
     comAccumulatedJobTime: 0,
 
     connectVia: '',
+    connectServerVia: 'lw.comm-server',
     connectPort: '',
     connectBaud: '115200',
     connectIP: '',

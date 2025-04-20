@@ -225,17 +225,20 @@ class Settings extends React.Component {
                     </Panel>
 
                     <SettingsPanel collapsible header="Machine" eventKey="1" bsStyle="info" errors={this.state.errors} >
+                        <ToggleField {...{ object: this.props.settings, field: 'machineSizeFromMachine', setAttrs: setSettingsAttrs, description: 'Size from firmware', info: Info(<p className="help-block">
+                            If enabled, machine dimensions and origin offsets will be automatically set from the machine's firmware limits.<br/>Only supported by machines connected via Moonraker.
+                            </p>,"Machine Size from firmware") }} />
                         <h5 className="header">Machine Dimensions</h5>
                         <NumberField {...{ object: this.props.settings, field: 'machineWidth', setAttrs: setSettingsAttrs, description: 'Width', units: 'mm', info: Info(<p className="help-block">
                                     The total width and height (X and Y) size of the machine work area
-                                    </p>,"Working Dimensions") }} />
-                        <NumberField {...{ object: this.props.settings, field: 'machineHeight', setAttrs: setSettingsAttrs, description: 'Height', units: 'mm' }} />
+                                    </p>,"Working Dimensions"), disabled: this.props.settings.machineSizeFromMachine }} />
+                        <NumberField {...{ object: this.props.settings, field: 'machineHeight', setAttrs: setSettingsAttrs, description: 'Height', units: 'mm', disabled: this.props.settings.machineSizeFromMachine }} />
 
                         <h5 className="header">Machine Origin offsets</h5>
                         <NumberField {...{ object: this.props.settings, field: 'machineBottomLeftX', setAttrs: setSettingsAttrs, description: 'Left X', units: 'mm', info: Info(<p className="help-block">
                                     X and Y offsets for the machine work area relative to the Home position.<br/>For a machine that homes to the top-right corner use negative values.
-                                    </p>,"Working Area Offset") }} />
-                        <NumberField {...{ object: this.props.settings, field: 'machineBottomLeftY', setAttrs: setSettingsAttrs, description: 'Bottom Y', units: 'mm' }} />
+                                    </p>,"Working Area Offset"), disabled: this.props.settings.machineSizeFromMachine }} />
+                        <NumberField {...{ object: this.props.settings, field: 'machineBottomLeftY', setAttrs: setSettingsAttrs, description: 'Bottom Y', units: 'mm', disabled: this.props.settings.machineSizeFromMachine }} />
                         <h5 className="header">Tool head</h5>
                         <NumberField {...{ object: this.props.settings, field: 'machineBeamDiameter', setAttrs: setSettingsAttrs, description: (<span>Beam <abbr title="Diameter">&Oslash;</abbr></span>), info: Info(<p className="help-block">
                                     The diameter of the laser spot when cutting and marking.<br/>Used for the suggested width in laser cut, fill and raster operations.

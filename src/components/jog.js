@@ -14,7 +14,7 @@ import { xOffset, yOffset } from './com';
 import CommandHistory from './command-history';
 
 import { Input, TextField, NumberField, ToggleField, SelectField } from './forms';
-import { runCommand, runJob, pauseJob, resumeJob, abortJob, clearAlarm, setZero, gotoZero, setPosition, home, probe, checkSize, laserTest, jog, jogTo, feedOverride, spindleOverride, resetMachine } from './com.js';
+import { runCommand, runJob, pauseJob, resumeJob, abortJob, clearJob, clearAlarm, setZero, gotoZero, setPosition, home, probe, checkSize, laserTest, jog, jogTo, feedOverride, spindleOverride, resetMachine, serverConnected, socket } from './com.js';
 import { MacrosBar } from './macros';
 
 import '../styles/index.css'
@@ -178,6 +178,9 @@ class Jog extends React.Component {
             }
         }
 
+        if (serverConnected && socket && socket.moonraker) {
+            socket.emit('getServerConfig');
+        }
     }
 
     componentWillUnmount() {
@@ -298,6 +301,18 @@ class Jog extends React.Component {
             playing = false;
             this.setState({ isPaused: false, isPlaying: false })
             abortJob();
+        }
+    }
+
+    clearJob() {
+        if (!socket || !socket.moonraker) {
+            return;
+        }
+
+        if (playing) {
+            CommandHistory.log('clearJob ignored, because job is running');
+        } else {
+            clearJob();
         }
     }
 
@@ -422,11 +437,9 @@ class Jog extends React.Component {
     }
 
     laserTest() {
-        console.log('laserTest');
         let power = this.props.settings.gcodeToolTestPower;
         let duration = this.props.settings.gcodeToolTestDuration;
         let maxS = this.props.settings.gcodeSMaxValue;
-        console.log('laserTest(' + power + ',' + duration + ',' + maxS + ')');
         laserTest(power, duration, maxS);
     }
 
@@ -533,7 +546,7 @@ class Jog extends React.Component {
         return (
             <div style={{ paddingTop: 6 }} >
                         <span className="badge badge-default badge-notify" title="Machine Status" id="machineStatus" style={{ marginRight: 5 }}>Not Connected</span>
-                        <span className="badge badge-default badge-notify" title="Job details, based on gcode lines completed and queued" id="queueCnt" style={{ marginRight: 5 }}>Queued: 0</span>
+                        <span className="badge badge-default badge-notify" onClick={(e) => { this.clearJob() }} title="Job details, based on gcode lines completed and queued" id="queueCnt" style={{ marginRight: 5 }}>Queued: 0</span>
                         <div id="mPosition" className="well well-sm" style={{ marginBottom: 7}}>
                             <div id="rX" className="drolabel">X:</div>
                             <div className="btn-group dropdown" style={{ marginLeft: -3 }}>
@@ -932,7 +945,14 @@ Jog = connect(
 // Exports
 export default Jog
 
-export { liveJoggingState }
+export function hasHomed(hasHomed) {
+    liveJoggingState.hasHomed = hasHomed
+    if (thatComponent) {
+        thatComponent.setState({
+            liveJogging: { ...thatComponent.state.liveJogging, hasHomed: hasHomed }
+        });
+    }
+}
 
 export function runStatus(status, applyState = true) {
     if (status === 'running') {
